@@ -30,7 +30,7 @@ jobs:
 
       - name: npm install and build
         env:
-          NEXT_PUBLIC_API_BASE_URL: https://tech0-schooldx-dev-appservice-python4-dwcecehve7h7cxhq.eastus-01.azurewebsites.net
+          NEXT_PUBLIC_API_BASE_URL: https://tech0-schooldx-dev-appservice-python5-je-gjeggke0b2bagney.japaneast-01.azurewebsites.net
         run: |
           npm install
           rm -rf .next
