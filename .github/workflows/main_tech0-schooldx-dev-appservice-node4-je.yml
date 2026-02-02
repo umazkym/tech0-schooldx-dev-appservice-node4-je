@@ -29,11 +29,21 @@ jobs:
           npm run build --if-present
           npm run test --if-present
 
+      - name: Debug - List build output
+        run: |
+          echo "=== .next directory ===" 
+          ls -la ./.next/
+          echo "=== .next/standalone directory ==="
+          ls -la ./.next/standalone/ || echo "standalone not found"
+          echo "=== .next/static directory ==="
+          ls -la ./.next/static/ || echo "static not found"
+
       - name: Copy artifact for deployment job
         run: |
           mkdir deploy
           cp -r ./.next/standalone/. ./deploy
           cp -r ./public ./deploy
+          mkdir -p ./deploy/.next/static
           cp -r ./.next/static/. ./deploy/.next/static
 
       - name: Zip artifact for deployment
