@@ -959,44 +959,39 @@ function DashboardPageContent() {
     );
   }
 
-  // 大きな正誤表示セル（後方からも見やすい） - コンパクト版（最大16問対応）
+  // 大きな正誤表示セル（後方からも見やすい） - プレミアムデザイン版
   function LargeStatusCell({ label, status }: { label: string; status: string }) {
-    // 正解: 緑背景 + チェック
     if (status === "correct") {
       return (
-        <div className="flex items-center justify-center rounded-md bg-[#22C55E] text-white min-h-[36px]">
-          <span className="text-lg font-black leading-none">〇</span>
+        <div className="flex items-center justify-center rounded-lg min-h-[36px]" style={{ background: 'linear-gradient(135deg, #22C55E 0%, #16A34A 100%)', boxShadow: '0 2px 4px rgba(34,197,94,0.3)' }}>
+          <span className="text-lg font-black leading-none text-white drop-shadow-sm">〇</span>
         </div>
       );
     }
-    // 不正解: 赤背景 + バツ
     if (status === "wrong") {
       return (
-        <div className="flex items-center justify-center rounded-md bg-[#EF4444] text-white min-h-[36px]">
-          <span className="text-lg font-black leading-none">×</span>
+        <div className="flex items-center justify-center rounded-lg min-h-[36px]" style={{ background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)', boxShadow: '0 2px 4px rgba(239,68,68,0.3)' }}>
+          <span className="text-lg font-black leading-none text-white drop-shadow-sm">×</span>
         </div>
       );
     }
-    // 解答中: オレンジ背景 + 鉛筆
     if (status === "pencil") {
       return (
-        <div className="flex items-center justify-center rounded-md bg-[#F59E0B] text-white min-h-[36px]">
-          <span className="text-base leading-none">✎</span>
+        <div className="flex items-center justify-center rounded-lg min-h-[36px]" style={{ background: 'linear-gradient(135deg, #F59E0B 0%, #D97706 100%)', boxShadow: '0 2px 4px rgba(245,158,11,0.3)' }}>
+          <span className="text-base leading-none text-white drop-shadow-sm">✎</span>
         </div>
       );
     }
-    // 未回答: グレー背景
     return (
-      <div className="flex items-center justify-center rounded-md bg-gray-200 text-gray-400 min-h-[36px]">
+      <div className="flex items-center justify-center rounded-lg min-h-[36px] bg-gray-100 text-gray-300">
         <span className="text-base leading-none">─</span>
       </div>
     );
   }
 
-  // 問題がない場合のグレー表示セル
   function EmptyQuestionCell() {
     return (
-      <div className="flex items-center justify-center rounded-md bg-gray-100 text-gray-300 min-h-[36px]">
+      <div className="flex items-center justify-center rounded-lg min-h-[36px] bg-gray-50 text-gray-200">
         <span className="text-base leading-none">─</span>
       </div>
     );
@@ -1042,33 +1037,34 @@ function DashboardPageContent() {
 
 
   return (
-    <div>
+    <div className="min-h-screen" style={{ background: 'linear-gradient(180deg, #F0F4FF 0%, #E8ECF5 100%)' }}>
       {/* 上部: 戻るボタン、タイトル、メッセージ */}
       <div className="flex items-center gap-4 mb-1 justify-between">
-        <div>
+        <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
-            className="font-bold hover:underline mr-4"
+            className="text-[#285AC8] font-bold hover:underline"
           >
             &lt; 戻る
           </button>
-          <span className="text-xl font-bold">ダッシュボード</span>
+          <span className="text-xl font-black text-gray-800">ダッシュボード</span>
         </div>
-        <div className="border border-blue-100 bg-blue-50 p-2 rounded min-w-[500px] text-center">
+        <div className="px-6 py-2 rounded-full text-sm font-bold text-[#285AC8]" style={{ background: 'linear-gradient(135deg, #E0EDFF 0%, #D0E0FF 100%)', border: '1px solid #B8D0FF' }}>
           {message}
         </div>
       </div>
 
       {/* 授業情報とタイマー */}
-      <div className="text-gray-600 mb-1 flex justify-between items-start">
+      <div className="text-gray-600 mb-1 flex justify-between items-center">
         <div>
-          <div className="text-lg">{dateInfoQuery}</div>
-          <div>{contentInfoQuery}</div>
+          <div className="text-lg font-bold text-gray-700">{dateInfoQuery}</div>
+          <div className="text-sm text-gray-500">{contentInfoQuery}</div>
         </div>
         {/* タイマー表示 */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <div
-            className="w-24 h-24 border-4 border-[#285AC8] rounded-full flex items-center justify-center text-[#285AC8] text-3xl font-black cursor-pointer hover:bg-blue-50"
+            className="w-24 h-24 rounded-full flex items-center justify-center text-3xl font-black cursor-pointer transition-transform hover:scale-105"
+            style={{ background: 'linear-gradient(135deg, #285AC8 0%, #1E40AF 100%)', color: 'white', boxShadow: '0 4px 15px rgba(40,90,200,0.35)' }}
             title="クリックして時間を変更"
             onClick={handleChangeTimer}
           >
@@ -1076,18 +1072,20 @@ function DashboardPageContent() {
           </div>
           <div className="flex gap-2">
             <button
-              className={`px-6 py-3 rounded text-lg font-bold text-white ${!isLessonStarted || isRunning
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-[#285AC8] hover:bg-blue-700'}`}
+              className={`px-6 py-3 rounded-xl text-lg font-bold text-white transition-all ${!isLessonStarted || isRunning
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'hover:scale-105'}`}
+              style={!isLessonStarted || isRunning ? {} : { background: 'linear-gradient(135deg, #285AC8 0%, #1E40AF 100%)', boxShadow: '0 4px 12px rgba(40,90,200,0.3)' }}
               onClick={startTimer}
               disabled={!isLessonStarted || isRunning}
             >
               演習開始
             </button>
             <button
-              className={`px-6 py-3 rounded text-lg font-bold text-white ${!isRunning
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-red-500 hover:bg-red-600'}`}
+              className={`px-6 py-3 rounded-xl text-lg font-bold text-white transition-all ${!isRunning
+                ? 'bg-gray-300 cursor-not-allowed'
+                : 'hover:scale-105'}`}
+              style={!isRunning ? {} : { background: 'linear-gradient(135deg, #EF4444 0%, #DC2626 100%)', boxShadow: '0 4px 12px rgba(239,68,68,0.3)' }}
               onClick={stopTimer}
               disabled={!isRunning}
             >
@@ -1097,19 +1095,19 @@ function DashboardPageContent() {
         </div>
       </div>
 
-      {/* 正答率サマリーバー - 高視認性レイアウト */}
-      <div className="flex items-center gap-4 mb-1 bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
-        <span className="text-lg font-black text-gray-700 whitespace-nowrap">正答率</span>
+      {/* 正答率サマリーバー - プレミアムデザイン */}
+      <div className="flex items-center gap-4 mb-1.5 px-4 py-1.5 rounded-xl" style={{ background: 'linear-gradient(135deg, #FFFFFF 0%, #F8FAFF 100%)', boxShadow: '0 2px 8px rgba(0,0,0,0.06)', border: '1px solid #E2E8F0' }}>
+        <span className="text-lg font-black whitespace-nowrap" style={{ color: '#285AC8' }}>正答率</span>
         <div className="flex flex-wrap gap-x-4 gap-y-1 flex-1">
           {Array.from({ length: totalQuestions }).map((_, qIndex) => {
             const pct = Math.round(calcQAPercentage(students, qIndex));
             return (
-              <div key={qIndex} className="flex items-center gap-1">
-                <span className="text-sm font-bold text-gray-600 w-6">Q{qIndex + 1}</span>
-                <div className="w-20 h-5 bg-gray-200 rounded-full overflow-hidden">
+              <div key={qIndex} className="flex items-center gap-1.5">
+                <span className="text-sm font-black text-gray-500 w-6">Q{qIndex + 1}</span>
+                <div className="w-20 h-5 rounded-full overflow-hidden" style={{ background: '#E2E8F0' }}>
                   <div
-                    className="h-full bg-[#4CB64B] transition-all duration-300"
-                    style={{ width: `${pct}%` }}
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ width: `${pct}%`, background: pct >= 70 ? 'linear-gradient(90deg, #22C55E, #16A34A)' : pct >= 40 ? 'linear-gradient(90deg, #F59E0B, #D97706)' : 'linear-gradient(90deg, #EF4444, #DC2626)' }}
                   />
                 </div>
                 <span className={`text-sm font-black w-10 text-right ${pct >= 70 ? 'text-green-600' : pct >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
@@ -1119,13 +1117,14 @@ function DashboardPageContent() {
             );
           })}
         </div>
-        <span className="text-sm font-bold text-gray-500 whitespace-nowrap">
+        <span className="text-sm font-bold text-gray-400 whitespace-nowrap">
           回答者: {students.filter(s => s.questions[0]?.status === 'correct' || s.questions[0]?.status === 'wrong' || s.questions[0]?.status === 'pencil').length}/{students.length}
         </span>
       </div>
-      {/* 生徒一覧 - 10列固定グリッドで視認性向上 */}
+
+      {/* 生徒一覧 - 10列プレミアムグリッド */}
       <div
-        className="grid gap-1"
+        className="grid gap-1.5"
         style={{
           gridTemplateColumns: `repeat(10, minmax(0, 1fr))`
         }}
@@ -1133,14 +1132,15 @@ function DashboardPageContent() {
         {students.map((st) => (
           <div
             key={st.id}
-            className="bg-white border-2 border-gray-200 rounded-lg overflow-hidden shadow-sm"
+            className="rounded-xl overflow-hidden transition-transform hover:scale-[1.02]"
+            style={{ background: 'white', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', border: '1px solid #E2E8F0' }}
           >
-            {/* 出席番号と名前 - 横配置 */}
-            <div className="flex items-center gap-1 px-1 py-0.5 bg-gray-50 border-b border-gray-200">
-              <span className="text-3xl font-black text-[#285AC8] leading-tight">{st.students_number}</span>
-              <span className="text-lg font-bold text-gray-700 truncate flex-1 leading-tight">{st.name}</span>
+            {/* 出席番号と名前 - グラデーションヘッダー */}
+            <div className="flex items-center gap-1 px-1.5 py-0.5" style={{ background: 'linear-gradient(135deg, #285AC8 0%, #3B6FD9 100%)' }}>
+              <span className="text-3xl font-black text-white leading-tight" style={{ textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{st.students_number}</span>
+              <span className="text-base font-bold text-white truncate flex-1 leading-tight" style={{ opacity: 0.95 }}>{st.name}</span>
             </div>
-            {/* 問題の正誤表示 - 4問ごとに行を分割（コンパクト表示） */}
+            {/* 問題の正誤表示 - 4問ごとに行を分割 */}
             <div className="p-0.5">
               {Array.from({ length: Math.ceil(totalQuestions / 4) || 1 }).map((_, rowIndex) => (
                 <div key={rowIndex} className="grid grid-cols-4 gap-0.5 mb-0.5 last:mb-0">
