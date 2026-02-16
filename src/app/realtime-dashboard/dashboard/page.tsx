@@ -1097,35 +1097,30 @@ function DashboardPageContent() {
         </div>
       </div>
 
-      {/* 正答率サマリーバー - 高視認性レイアウト */}
-      <div className="flex items-center gap-4 mb-1 bg-gray-50 px-3 py-1 rounded-lg border border-gray-200">
+      {/* 正答率サマリー - 1行コンパクト表示 */}
+      <div className="flex items-center gap-2 mb-1 px-2 py-1">
         <span className="text-lg font-black text-gray-700 whitespace-nowrap">正答率</span>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 flex-1">
+        <div className="flex gap-1 flex-1">
           {Array.from({ length: totalQuestions }).map((_, qIndex) => {
             const pct = Math.round(calcQAPercentage(students, qIndex));
+            const bgColor = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : pct > 0 ? 'bg-red-500' : 'bg-gray-300';
+            const textColor = pct > 0 ? 'text-white' : 'text-gray-500';
             return (
-              <div key={qIndex} className="flex items-center gap-1">
-                <span className="text-sm font-bold text-gray-600 w-6">Q{qIndex + 1}</span>
-                <div className="w-20 h-5 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#4CB64B] transition-all duration-300"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <span className={`text-sm font-black w-10 text-right ${pct >= 70 ? 'text-green-600' : pct >= 40 ? 'text-amber-600' : 'text-red-600'}`}>
-                  {pct}%
-                </span>
+              <div key={qIndex} className={`flex-1 ${bgColor} ${textColor} rounded px-1 py-0.5 text-center`}>
+                <div className="text-xs font-bold leading-tight">Q{qIndex + 1}</div>
+                <div className="text-lg font-black leading-tight">{pct}%</div>
               </div>
             );
           })}
         </div>
-        <span className="text-sm font-bold text-gray-500 whitespace-nowrap">
-          回答者: {students.filter(s => s.questions[0]?.status === 'correct' || s.questions[0]?.status === 'wrong' || s.questions[0]?.status === 'pencil').length}/{students.length}
-        </span>
+        <div className="text-sm font-bold text-gray-500 whitespace-nowrap text-center">
+          <div className="text-xs text-gray-400">回答者</div>
+          <div>{students.filter(s => s.questions[0]?.status === 'correct' || s.questions[0]?.status === 'wrong' || s.questions[0]?.status === 'pencil').length}/{students.length}</div>
+        </div>
       </div>
       {/* 生徒一覧 - 10列固定グリッドで視認性向上 */}
       <div
-        className="grid gap-1"
+        className="grid gap-2"
         style={{
           gridTemplateColumns: `repeat(10, minmax(0, 1fr))`
         }}
