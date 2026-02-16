@@ -1097,18 +1097,27 @@ function DashboardPageContent() {
         </div>
       </div>
 
-      {/* 正答率サマリー - 1行コンパクト表示 */}
+      {/* 正答率サマリー - プログレスバー付き1行表示 */}
       <div className="flex items-center gap-2 mb-1 px-2 py-1">
         <span className="text-lg font-black text-gray-700 whitespace-nowrap">正答率</span>
-        <div className="flex gap-1 flex-1">
+        <div className="flex gap-1.5 flex-1">
           {Array.from({ length: totalQuestions }).map((_, qIndex) => {
             const pct = Math.round(calcQAPercentage(students, qIndex));
-            const bgColor = pct >= 70 ? 'bg-green-500' : pct >= 40 ? 'bg-amber-500' : pct > 0 ? 'bg-red-500' : 'bg-gray-300';
-            const textColor = pct > 0 ? 'text-white' : 'text-gray-500';
+            const barColor = pct >= 70 ? 'bg-[#22C55E]' : pct >= 40 ? 'bg-[#F59E0B]' : pct > 0 ? 'bg-[#EF4444]' : 'bg-gray-300';
+            const textColor = pct >= 70 ? 'text-green-600' : pct >= 40 ? 'text-amber-600' : 'text-red-600';
             return (
-              <div key={qIndex} className={`flex-1 ${bgColor} ${textColor} rounded px-1 py-0.5 text-center`}>
-                <div className="text-xs font-bold leading-tight">Q{qIndex + 1}</div>
-                <div className="text-lg font-black leading-tight">{pct}%</div>
+              <div key={qIndex} className="flex-1 text-center">
+                <div className="text-xs font-bold text-gray-500 leading-tight">Q{qIndex + 1}</div>
+                <div className="w-full h-4 bg-gray-200 rounded-full overflow-hidden my-0.5 relative">
+                  <div
+                    className={`h-full ${barColor} transition-all duration-300 rounded-full`}
+                    style={{ width: `${pct}%` }}
+                  />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-[10px] font-black text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.5)]">{pct > 0 ? `${pct}%` : ''}</span>
+                  </div>
+                </div>
+                <div className={`text-base font-black leading-tight ${textColor}`}>{pct}%</div>
               </div>
             );
           })}
