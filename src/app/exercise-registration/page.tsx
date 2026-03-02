@@ -211,18 +211,6 @@ export default function ExerciseRegistrationPage() {
         })
     }
 
-    // すべて展開/折りたたみ
-    function expandAll() {
-        setExpandedParts(new Set(parts.map(p => p.part_name)))
-        setExpandedChapters(new Set(
-            parts.flatMap(p => p.chapters.map(c => `${p.part_name}::${c.chapter_name}`))
-        ))
-    }
-
-    function collapseAll() {
-        setExpandedParts(new Set())
-        setExpandedChapters(new Set())
-    }
 
     // ============================================================
     // JSX
@@ -263,26 +251,7 @@ export default function ExerciseRegistrationPage() {
             <div className="flex">
                 {/* 左側ツリー（折りたたみ対応） */}
                 <div className="w-64 border-r border-gray-200 pr-2">
-                    <div className="flex items-center justify-between mb-2">
-                        <h2 className="font-bold text-lg">高校1年生・物理基礎</h2>
-                        {!loading && !error && (
-                            <div className="flex gap-1">
-                                <button
-                                    onClick={expandAll}
-                                    className="text-xs text-blue-600 hover:underline"
-                                >
-                                    展開
-                                </button>
-                                <span className="text-gray-300 text-xs">|</span>
-                                <button
-                                    onClick={collapseAll}
-                                    className="text-xs text-blue-600 hover:underline"
-                                >
-                                    折りたたむ
-                                </button>
-                            </div>
-                        )}
-                    </div>
+                    <h2 className="font-bold text-lg mb-2">高校1年生・物理基礎</h2>
                     {parts.map((p) => {
                         const isPartExpanded = expandedParts.has(p.part_name)
                         return (

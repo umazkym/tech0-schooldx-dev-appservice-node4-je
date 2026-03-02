@@ -1,7 +1,6 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { HiChartBar, HiPencilSquare } from 'react-icons/hi2'
 import contentsIcon from './icons/contents.png'
 import classroomIcon from './icons/classroom.png'
 import dashboardIcon from './icons/dashboard.png'
@@ -108,7 +107,7 @@ export default function HomePage() {
               transition-shadow
             "
           >
-            <HiChartBar className="text-gray-600 mb-2" size={64} />
+            <div className="text-4xl mb-2">📊</div>
             <div className="text-sm font-medium">
               成績表示
             </div>
@@ -128,7 +127,7 @@ export default function HomePage() {
               transition-shadow
             "
           >
-            <HiPencilSquare className="text-gray-600 mb-2" size={64} />
+            <div className="text-4xl mb-2">📝</div>
             <div className="text-sm font-medium">
               演習問題登録
             </div>
