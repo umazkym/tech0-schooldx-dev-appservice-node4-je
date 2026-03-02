@@ -20,7 +20,7 @@ export default function Sidebar() {
 
   const isContentSelection = pathname.startsWith('/realtime-dashboard/content-selection')
   const isDashboard = pathname.startsWith('/realtime-dashboard/dashboard')
-  
+
   // ▼▼▼【修正】/class-registration/ 以下の全てのパスで一致するように変更 ▼▼▼
   const isClassRegistration = pathname.startsWith('/class-registration')
   // ▲▲▲【修正】ここまで ▲▲▲
@@ -54,6 +54,16 @@ export default function Sidebar() {
 
   // 4) 授業登録画面 (/class-registration): コンテンツ管理・登録
   if (isClassRegistration) {
+    menus.push({
+      label: 'コンテンツ\n管理・登録',
+      href: '/contents-management',
+      icon: <AiFillBook size={36} className="text-[#285AC8]" />,
+    })
+  }
+
+  // 5) 演習問題登録画面 (/exercise-registration): コンテンツ管理・登録
+  const isExerciseRegistration = pathname.startsWith('/exercise-registration')
+  if (isExerciseRegistration) {
     menus.push({
       label: 'コンテンツ\n管理・登録',
       href: '/contents-management',

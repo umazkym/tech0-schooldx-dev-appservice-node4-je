@@ -24,6 +24,8 @@ export default function Header() {
   } else if (pathname.startsWith("/grades")) {
     // ▼▼▼【修正】「成績表示」ページのタイトルを追加 ▼▼▼
     pageTitle = "成績表示"
+  } else if (pathname.startsWith("/exercise-registration")) {
+    pageTitle = "演習問題登録"
   }
 
   return (

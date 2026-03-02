@@ -15,7 +15,7 @@ export default function HomePage() {
     <div className="px-4 py-6">
       <h1 className="text-xl font-bold mb-4">使用する機能を選択してください</h1>
       <div className="flex gap-8 flex-wrap">
-        
+
         {/* コンテンツ登録/管理 */}
         <Link href="/contents-management" className="text-center">
           <div
@@ -110,6 +110,26 @@ export default function HomePage() {
             <div className="text-4xl mb-2">📊</div>
             <div className="text-sm font-medium">
               成績表示
+            </div>
+          </div>
+        </Link>
+
+        {/* 演習問題登録（新規追加） */}
+        <Link href="/exercise-registration" className="text-center">
+          <div
+            className="
+              w-48 h-56
+              border border-gray-200
+              rounded-lg
+              flex flex-col items-center justify-center
+              bg-white
+              shadow-sm hover:shadow-md
+              transition-shadow
+            "
+          >
+            <div className="text-4xl mb-2">📝</div>
+            <div className="text-sm font-medium">
+              演習問題登録
             </div>
           </div>
         </Link>
