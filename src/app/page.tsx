@@ -1,6 +1,7 @@
 import React from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { HiChartBar, HiPencilSquare } from 'react-icons/hi2'
 import contentsIcon from './icons/contents.png'
 import classroomIcon from './icons/classroom.png'
 import dashboardIcon from './icons/dashboard.png'
@@ -8,7 +9,7 @@ import dashboardIcon from './icons/dashboard.png'
 /**
  * ホームメニュー画面
  * ・「使用する機能を選択してください」を上部に表示
- * ・4つのカードに影をつける（成績表示を追加）
+ * ・5つのカードに影をつける
  */
 export default function HomePage() {
   return (
@@ -94,7 +95,7 @@ export default function HomePage() {
           </div>
         </Link>
 
-        {/* 成績表示（新規追加） */}
+        {/* 成績表示 */}
         <Link href="/grades" className="text-center">
           <div
             className="
@@ -107,14 +108,14 @@ export default function HomePage() {
               transition-shadow
             "
           >
-            <div className="text-4xl mb-2">📊</div>
+            <HiChartBar className="text-gray-600 mb-2" size={64} />
             <div className="text-sm font-medium">
               成績表示
             </div>
           </div>
         </Link>
 
-        {/* 演習問題登録（新規追加） */}
+        {/* 演習問題登録 */}
         <Link href="/exercise-registration" className="text-center">
           <div
             className="
@@ -127,7 +128,7 @@ export default function HomePage() {
               transition-shadow
             "
           >
-            <div className="text-4xl mb-2">📝</div>
+            <HiPencilSquare className="text-gray-600 mb-2" size={64} />
             <div className="text-sm font-medium">
               演習問題登録
             </div>

@@ -229,8 +229,8 @@ export default function ExerciseThemeDetailPage() {
                         <Link
                             href={`/exercise-registration/${themeId}/question/add`}
                             className={`px-4 py-2 rounded text-white text-sm ${questions.length >= 8
-                                    ? "bg-gray-400 pointer-events-none"
-                                    : "bg-blue-500 hover:bg-blue-600"
+                                ? "bg-gray-400 pointer-events-none"
+                                : "bg-blue-500 hover:bg-blue-600"
                                 }`}
                         >
                             ＋ 演習問題を追加
@@ -296,14 +296,14 @@ export default function ExerciseThemeDetailPage() {
                                             href={`/exercise-registration/${themeId}/question/edit/${question.lesson_question_id}`}
                                             className="flex-1 text-center bg-white border border-gray-300 text-gray-700 px-3 py-1.5 rounded text-xs hover:bg-gray-50"
                                         >
-                                            ✏️ 編集
+                                            編集
                                         </Link>
                                         <button
                                             className="flex-1 text-center bg-white border border-gray-300 text-red-600 px-3 py-1.5 rounded text-xs hover:bg-red-50"
                                             disabled={deleting}
                                             onClick={() => handleDeleteQuestion(question.lesson_question_id)}
                                         >
-                                            🗑️ 削除
+                                            削除
                                         </button>
                                     </div>
                                 </div>

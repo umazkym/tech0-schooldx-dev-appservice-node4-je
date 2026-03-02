@@ -207,7 +207,7 @@ export default function QuestionEditPage() {
                 <form onSubmit={handleSubmit} className="space-y-6">
                     {/* 画像アップロード */}
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        <h3 className="font-bold text-md mb-2">📷 問題画像（問題文・選択肢を含む）</h3>
+                        <h3 className="font-bold text-md mb-2">問題画像（問題文・選択肢を含む）</h3>
                         <div className="bg-blue-50 border border-blue-100 rounded p-3 mb-4 text-sm text-blue-700">
                             画像には問題文と4つの選択肢（①、②、③、④）を含めてください
                         </div>
@@ -259,14 +259,14 @@ export default function QuestionEditPage() {
 
                     {/* 正解選択 */}
                     <div className="bg-white border border-gray-200 rounded-lg p-4">
-                        <h3 className="font-bold text-md mb-4">✅ 正解を選択</h3>
+                        <h3 className="font-bold text-md mb-4">正解を選択</h3>
                         <div className="grid grid-cols-2 gap-4">
                             {optionLabels.map((label, index) => (
                                 <div
                                     key={index}
                                     className={`flex items-center gap-3 p-4 rounded-lg border-2 transition-all cursor-pointer ${correctAnswer === index
-                                            ? "border-blue-500 bg-blue-50"
-                                            : "border-gray-200 hover:border-gray-300"
+                                        ? "border-blue-500 bg-blue-50"
+                                        : "border-gray-200 hover:border-gray-300"
                                         }`}
                                     onClick={() => setCorrectAnswer(index)}
                                 >
@@ -299,11 +299,11 @@ export default function QuestionEditPage() {
                             type="submit"
                             disabled={submitting}
                             className={`flex-1 py-3 rounded-lg font-medium text-white ${submitting
-                                    ? "bg-gray-400 cursor-not-allowed"
-                                    : "bg-blue-500 hover:bg-blue-600"
+                                ? "bg-gray-400 cursor-not-allowed"
+                                : "bg-blue-500 hover:bg-blue-600"
                                 }`}
                         >
-                            {submitting ? "更新中..." : "💾 更新"}
+                            {submitting ? "更新中..." : "更新"}
                         </button>
                     </div>
                 </form>

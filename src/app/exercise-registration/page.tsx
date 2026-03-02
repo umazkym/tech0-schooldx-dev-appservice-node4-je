@@ -1,16 +1,15 @@
 "use client"
 import React, { useEffect, useState, useCallback } from "react"
 import Link from "next/link"
-import { AiFillFolder } from "react-icons/ai"
+import { AiFillFolder, AiFillFolderOpen } from "react-icons/ai"
+import { IoChevronDown, IoChevronForward } from "react-icons/io5"
 import { apiBaseUrl } from '@/lib/apiConfig'
 
 /**
  * 演習問題登録 - テーマ一覧ページ
- * 
- * 左側: /content/by_id/1 で取得した教材階層ツリー (part_name > chapter_name > unit_name)
+ *
+ * 左側: 教材階層ツリー (part > chapter > unit) - 折りたたみ対応
  * 右側: 選択した単元の lesson_themes を一覧表示
- *       各テーマごとに「演習問題を登録」ボタンを表示
- *       既に登録済みの問題数をバッジで表示
  */
 
 type LessonThemeFromContent = {
@@ -53,6 +52,11 @@ export default function ExerciseRegistrationPage() {
     const [error, setError] = useState("")
     const [loading, setLoading] = useState(true)
 
+    // 折りたたみ状態管理
+    const [expandedParts, setExpandedParts] = useState<Set<string>>(new Set())
+    const [expandedChapters, setExpandedChapters] = useState<Set<string>>(new Set())
+
+
     // ============================================================
     // データ取得
     // ============================================================
@@ -76,6 +80,14 @@ export default function ExerciseRegistrationPage() {
 
             const groupedParts = groupByPartChapter(contentData)
             setParts(groupedParts)
+
+            // 初期状態: すべて展開
+            const allParts = new Set(groupedParts.map(p => p.part_name))
+            const allChapters = new Set(
+                groupedParts.flatMap(p => p.chapters.map(c => `${p.part_name}::${c.chapter_name}`))
+            )
+            setExpandedParts(allParts)
+            setExpandedChapters(allChapters)
 
             const mapObj: Record<number, UnitItemFromContent> = {}
             contentData.forEach((u) => {
@@ -108,7 +120,6 @@ export default function ExerciseRegistrationPage() {
     const fetchQuestionCounts = async (themeIds: number[]) => {
         if (!apiBaseUrl) return
         const counts: Record<number, QuestionCountResponse> = {}
-        // 並列で問題数を取得
         const promises = themeIds.map(async (themeId) => {
             try {
                 const res = await fetch(
@@ -165,6 +176,54 @@ export default function ExerciseRegistrationPage() {
         return questionCounts[themeId]?.question_count ?? 0
     }
 
+    // 折りたたみトグル
+    function togglePart(partName: string) {
+        setExpandedParts(prev => {
+            const next = new Set(prev)
+            if (next.has(partName)) {
+                next.delete(partName)
+                // 子チャプターもすべて閉じる
+                const part = parts.find(p => p.part_name === partName)
+                if (part) {
+                    part.chapters.forEach(c => {
+                        const key = `${partName}::${c.chapter_name}`
+                        expandedChapters.delete(key)
+                    })
+                    setExpandedChapters(new Set(expandedChapters))
+                }
+            } else {
+                next.add(partName)
+            }
+            return next
+        })
+    }
+
+    function toggleChapter(partName: string, chapterName: string) {
+        const key = `${partName}::${chapterName}`
+        setExpandedChapters(prev => {
+            const next = new Set(prev)
+            if (next.has(key)) {
+                next.delete(key)
+            } else {
+                next.add(key)
+            }
+            return next
+        })
+    }
+
+    // すべて展開/折りたたみ
+    function expandAll() {
+        setExpandedParts(new Set(parts.map(p => p.part_name)))
+        setExpandedChapters(new Set(
+            parts.flatMap(p => p.chapters.map(c => `${p.part_name}::${c.chapter_name}`))
+        ))
+    }
+
+    function collapseAll() {
+        setExpandedParts(new Set())
+        setExpandedChapters(new Set())
+    }
+
     // ============================================================
     // JSX
     // ============================================================
@@ -202,36 +261,92 @@ export default function ExerciseRegistrationPage() {
             )}
 
             <div className="flex">
-                {/* 左側ツリー */}
+                {/* 左側ツリー（折りたたみ対応） */}
                 <div className="w-64 border-r border-gray-200 pr-2">
-                    <h2 className="font-bold text-lg mb-2">高校1年生・物理基礎</h2>
-                    {parts.map((p) => (
-                        <div key={p.part_name} className="mb-2">
-                            <div className="text-sm font-bold mb-1">{p.part_name}</div>
-                            {p.chapters.map((ch) => (
-                                <div key={ch.chapter_name} className="ml-4 mb-2">
-                                    <div className="text-sm font-semibold mb-1">{ch.chapter_name}</div>
-                                    <div className="ml-4">
-                                        {ch.units.map((u) => {
-                                            const isSelected = u.units_id === selectedUnitId
-                                            return (
-                                                <div
-                                                    key={u.units_id}
-                                                    className="flex items-center mb-1 cursor-pointer"
-                                                    onClick={() => handleUnitClick(u.units_id)}
-                                                >
-                                                    <AiFillFolder style={{ color: "#FFB700" }} className="mr-1" />
-                                                    <span className={isSelected ? "font-bold" : ""}>
-                                                        {u.unit_name}
-                                                    </span>
-                                                </div>
-                                            )
-                                        })}
-                                    </div>
+                    <div className="flex items-center justify-between mb-2">
+                        <h2 className="font-bold text-lg">高校1年生・物理基礎</h2>
+                        {!loading && !error && (
+                            <div className="flex gap-1">
+                                <button
+                                    onClick={expandAll}
+                                    className="text-xs text-blue-600 hover:underline"
+                                >
+                                    展開
+                                </button>
+                                <span className="text-gray-300 text-xs">|</span>
+                                <button
+                                    onClick={collapseAll}
+                                    className="text-xs text-blue-600 hover:underline"
+                                >
+                                    折りたたむ
+                                </button>
+                            </div>
+                        )}
+                    </div>
+                    {parts.map((p) => {
+                        const isPartExpanded = expandedParts.has(p.part_name)
+                        return (
+                            <div key={p.part_name} className="mb-1">
+                                {/* 編（Part）ヘッダー */}
+                                <div
+                                    className="flex items-center gap-1 cursor-pointer py-1 hover:bg-gray-50 rounded px-1"
+                                    onClick={() => togglePart(p.part_name)}
+                                >
+                                    {isPartExpanded
+                                        ? <IoChevronDown className="text-gray-500 flex-shrink-0" size={14} />
+                                        : <IoChevronForward className="text-gray-500 flex-shrink-0" size={14} />
+                                    }
+                                    <span className="text-sm font-bold">{p.part_name}</span>
                                 </div>
-                            ))}
-                        </div>
-                    ))}
+
+                                {/* 章（Chapter）*/}
+                                {isPartExpanded && p.chapters.map((ch) => {
+                                    const chapterKey = `${p.part_name}::${ch.chapter_name}`
+                                    const isChapterExpanded = expandedChapters.has(chapterKey)
+                                    return (
+                                        <div key={ch.chapter_name} className="ml-4 mb-1">
+                                            {/* 章ヘッダー */}
+                                            <div
+                                                className="flex items-center gap-1 cursor-pointer py-1 hover:bg-gray-50 rounded px-1"
+                                                onClick={() => toggleChapter(p.part_name, ch.chapter_name)}
+                                            >
+                                                {isChapterExpanded
+                                                    ? <IoChevronDown className="text-gray-500 flex-shrink-0" size={12} />
+                                                    : <IoChevronForward className="text-gray-500 flex-shrink-0" size={12} />
+                                                }
+                                                <span className="text-sm font-semibold">{ch.chapter_name}</span>
+                                            </div>
+
+                                            {/* 単元（Unit） */}
+                                            {isChapterExpanded && (
+                                                <div className="ml-4">
+                                                    {ch.units.map((u) => {
+                                                        const isSelected = u.units_id === selectedUnitId
+                                                        return (
+                                                            <div
+                                                                key={u.units_id}
+                                                                className={`flex items-center mb-1 cursor-pointer py-0.5 px-1 rounded ${isSelected ? "bg-blue-50" : "hover:bg-gray-50"
+                                                                    }`}
+                                                                onClick={() => handleUnitClick(u.units_id)}
+                                                            >
+                                                                {isSelected
+                                                                    ? <AiFillFolderOpen style={{ color: "#FFB700" }} className="mr-1 flex-shrink-0" />
+                                                                    : <AiFillFolder style={{ color: "#FFB700" }} className="mr-1 flex-shrink-0" />
+                                                                }
+                                                                <span className={`text-sm ${isSelected ? "font-bold" : ""}`}>
+                                                                    {u.unit_name}
+                                                                </span>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        )
+                    })}
                 </div>
 
                 {/* 右テーブル */}
@@ -264,10 +379,10 @@ export default function ExerciseRegistrationPage() {
                                                     <td className="p-2 border-b border-gray-200 border-r text-center">
                                                         <span
                                                             className={`inline-block px-2 py-1 rounded text-xs font-semibold ${count >= 8
-                                                                    ? "bg-green-100 text-green-700"
-                                                                    : count > 0
-                                                                        ? "bg-yellow-100 text-yellow-700"
-                                                                        : "bg-gray-100 text-gray-500"
+                                                                ? "bg-green-100 text-green-700"
+                                                                : count > 0
+                                                                    ? "bg-yellow-100 text-yellow-700"
+                                                                    : "bg-gray-100 text-gray-500"
                                                                 }`}
                                                         >
                                                             {count} / 8
