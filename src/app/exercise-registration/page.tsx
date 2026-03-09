@@ -44,7 +44,24 @@ type PartGroup = {
     chapters: ChapterGroup[]
 }
 
+type SubjectData = {
+    subject_id: number
+    subject_name: string
+}
+
+type MaterialData = {
+    material_id: number
+    material_name: string
+    subject_id?: number
+}
+
 export default function ExerciseRegistrationPage() {
+    const [subjects, setSubjects] = useState<SubjectData[]>([])
+    const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null)
+    const [allMaterials, setAllMaterials] = useState<MaterialData[]>([])
+    const [materials, setMaterials] = useState<MaterialData[]>([])
+    const [selectedMaterialId, setSelectedMaterialId] = useState<number | null>(null)
+
     const [parts, setParts] = useState<PartGroup[]>([])
     const [unitMap, setUnitMap] = useState<Record<number, UnitItemFromContent>>({})
     const [selectedUnitId, setSelectedUnitId] = useState<number | null>(null)
@@ -58,9 +75,62 @@ export default function ExerciseRegistrationPage() {
 
 
     // ============================================================
-    // データ取得
+    // 科目・教科書データ取得
     // ============================================================
-    const fetchContentData = useCallback(async () => {
+    const fetchSubjects = useCallback(async () => {
+        if (!apiBaseUrl) return
+        try {
+            const res = await fetch(`${apiBaseUrl}/subjects/`, { method: "GET", mode: "cors" })
+            if (!res.ok) throw new Error(`科目一覧の取得に失敗: ${res.status}`)
+            const data: SubjectData[] = await res.json()
+            setSubjects(data)
+            if (data.length > 0) {
+                setSelectedSubjectId(data[0].subject_id)
+            }
+        } catch (err) {
+            console.error(err)
+        }
+    }, [])
+
+    const fetchMaterials = useCallback(async () => {
+        if (!apiBaseUrl) return
+        try {
+            const res = await fetch(`${apiBaseUrl}/lesson_registrations/all`, { method: "GET", mode: "cors" })
+            if (!res.ok) throw new Error(`教科書一覧の取得に失敗: ${res.status}`)
+            const data = await res.json()
+            setAllMaterials(data.materials || [])
+        } catch (err) {
+            console.error(err)
+        }
+    }, [])
+
+    // 科目が変更されたら教科書をフィルタ
+    useEffect(() => {
+        if (selectedSubjectId != null) {
+            const filtered = allMaterials.filter(
+                (m) => m.subject_id === selectedSubjectId
+            )
+            // subject_idがまだ教科書データに無い場合は全件表示（互換性）
+            const result = filtered.length > 0 ? filtered : allMaterials
+            setMaterials(result)
+            // 最初の教科書を自動選択
+            if (result.length > 0) {
+                setSelectedMaterialId(result[0].material_id)
+            } else {
+                setSelectedMaterialId(null)
+            }
+        } else {
+            setMaterials(allMaterials)
+            if (allMaterials.length > 0) {
+                setSelectedMaterialId(allMaterials[0].material_id)
+            }
+        }
+    }, [selectedSubjectId, allMaterials])
+
+    // ============================================================
+    // コンテンツデータ取得（教科書選択時）
+    // ============================================================
+    const fetchContentData = useCallback(async (materialId: number) => {
         if (!apiBaseUrl) {
             setError("APIのベースURLが設定されていません。")
             return
@@ -68,7 +138,7 @@ export default function ExerciseRegistrationPage() {
         setError("")
         setLoading(true)
         try {
-            const contentRes = await fetch(`${apiBaseUrl}/content/by_id/1`, {
+            const contentRes = await fetch(`${apiBaseUrl}/content/by_id/${materialId}`, {
                 method: "GET",
                 mode: "cors",
                 redirect: "follow",
@@ -138,9 +208,23 @@ export default function ExerciseRegistrationPage() {
         setQuestionCounts(counts)
     }
 
+    // 教科書が変更されたらコンテンツを再取得
     useEffect(() => {
-        fetchContentData()
-    }, [fetchContentData])
+        if (selectedMaterialId != null) {
+            fetchContentData(selectedMaterialId)
+        } else {
+            setParts([])
+            setUnitMap({})
+            setSelectedUnitId(null)
+            setLoading(false)
+        }
+    }, [selectedMaterialId, fetchContentData])
+
+    // 初回読み込み
+    useEffect(() => {
+        fetchSubjects()
+        fetchMaterials()
+    }, [fetchSubjects, fetchMaterials])
 
     // ============================================================
     // ユーティリティ
@@ -248,10 +332,50 @@ export default function ExerciseRegistrationPage() {
                 <p className="text-gray-500">読み込み中です。</p>
             )}
 
+            {/* 科目・教科書選択 */}
+            {!loading && !error && (
+                <div className="flex items-center gap-4 mb-4">
+                    <div>
+                        <label className="text-sm mr-2">科目:</label>
+                        <select
+                            className="border border-gray-300 rounded px-2 py-1 text-sm"
+                            value={selectedSubjectId ?? ""}
+                            onChange={(e) => setSelectedSubjectId(parseInt(e.target.value, 10) || null)}
+                        >
+                            <option value="">選択</option>
+                            {subjects.map((s) => (
+                                <option key={s.subject_id} value={s.subject_id}>
+                                    {s.subject_name}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+                    {materials.length > 1 && (
+                        <div>
+                            <label className="text-sm mr-2">教科書:</label>
+                            <select
+                                className="border border-gray-300 rounded px-2 py-1 text-sm"
+                                value={selectedMaterialId ?? ""}
+                                onChange={(e) => setSelectedMaterialId(parseInt(e.target.value, 10) || null)}
+                            >
+                                <option value="">選択</option>
+                                {materials.map((m) => (
+                                    <option key={m.material_id} value={m.material_id}>
+                                        {m.material_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <div className="flex">
                 {/* 左側ツリー（折りたたみ対応） */}
                 <div className="w-64 border-r border-gray-200 pr-2">
-                    <h2 className="font-bold text-lg mb-2">高校1年生・物理基礎</h2>
+                    <h2 className="font-bold text-lg mb-2">
+                        {materials.find(m => m.material_id === selectedMaterialId)?.material_name ?? "教科書を選択してください"}
+                    </h2>
                     {parts.map((p) => {
                         const isPartExpanded = expandedParts.has(p.part_name)
                         return (
