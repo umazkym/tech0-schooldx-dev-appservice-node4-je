@@ -29,6 +29,11 @@ type ClassData = {
   grade: number
 }
 
+type SubjectData = {
+  subject_id: number
+  subject_name: string
+}
+
 interface RowData {
   no: number
   selectedMaterialId: number | null
@@ -43,6 +48,9 @@ function SettingPageContent() {
   const timetableIdStr = searchParams.get("tid")
   const timetableId = timetableIdStr ? parseInt(timetableIdStr, 10) : null
 
+  const [subjects, setSubjects] = useState<SubjectData[]>([])
+  const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null)
+  const [allMaterials, setAllMaterials] = useState<Material[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [units, setUnits] = useState<UnitData[]>([])
   const [lessonThemes, setLessonThemes] = useState<LessonTheme[]>([])
@@ -90,6 +98,21 @@ function SettingPageContent() {
     }
   }, []);
 
+  const fetchSubjects = useCallback(async () => {
+    if (!apiBaseUrl) return;
+    try {
+      const res = await fetch(`${apiBaseUrl}/subjects/`, { method: "GET" });
+      if (!res.ok) throw new Error("科目一覧の取得に失敗しました");
+      const data = await res.json();
+      setSubjects(data);
+      if (data.length > 0) {
+        setSelectedSubjectId(data[0].subject_id);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  }, []);
+
   const fetchAllLessonData = useCallback(async () => {
     if (!apiBaseUrl) {
       console.error("APIのベースURLが設定されていません。");
@@ -105,7 +128,7 @@ function SettingPageContent() {
         throw new Error(`Failed to fetch lesson data: ${res.status}, ${msg}`)
       }
       const data = await res.json()
-      setMaterials(data.materials || [])
+      setAllMaterials(data.materials || [])
       setUnits(data.units || [])
       setLessonThemes(data.lesson_themes || [])
     } catch (err) {
@@ -113,10 +136,33 @@ function SettingPageContent() {
     }
   }, []);
 
+  // 科目が変更されたら教科書をフィルタし、行をリセット
+  useEffect(() => {
+    if (selectedSubjectId != null) {
+      const filtered = allMaterials.filter(
+        (m: Material & { subject_id?: number }) => m.subject_id === selectedSubjectId
+      );
+      // subject_idがまだ教科書データに無い場合は全件表示（互換性）
+      setMaterials(filtered.length > 0 ? filtered : allMaterials);
+    } else {
+      setMaterials(allMaterials);
+    }
+    // 科目変更時にテーマ選択をリセット
+    setRows([{
+      no: 1,
+      selectedMaterialId: null,
+      selectedPartName: "",
+      selectedChapterName: "",
+      selectedUnitName: "",
+      selectedThemeId: null,
+    }]);
+  }, [selectedSubjectId, allMaterials]);
+
   useEffect(() => {
     fetchClasses()
+    fetchSubjects()
     fetchAllLessonData()
-  }, [fetchClasses, fetchAllLessonData]);
+  }, [fetchClasses, fetchSubjects, fetchAllLessonData]);
 
   function addRow() {
     setRows((prev) => {
@@ -215,6 +261,10 @@ function SettingPageContent() {
       alert("timetable_idがありません。");
       return;
     }
+    if (!selectedSubjectId) {
+      alert("科目を選択してください。");
+      return;
+    }
     if (!selectedClassId) {
       alert("クラスを選択してください。");
       return;
@@ -237,6 +287,7 @@ function SettingPageContent() {
     }
 
     const payload = {
+      subject_id: selectedSubjectId,
       class_id: selectedClassId,
       timetable_id: timetableId,
       lesson_theme_ids: themeIds,
@@ -327,12 +378,25 @@ function SettingPageContent() {
       )}
 
       <div className="flex items-center justify-between mb-4">
-        <div>
-          <button onClick={() => history.back()} className="font-bold hover:underline mr-4">
+        <div className="flex items-center gap-4">
+          <button onClick={() => history.back()} className="font-bold hover:underline">
             &lt; 戻る
           </button>
-        </div>
-        <div className="flex gap-4 items-center">
+          <div>
+            <label className="text-sm mr-2">科目:</label>
+            <select
+              className="border border-gray-300 rounded px-2 py-1"
+              value={selectedSubjectId ?? ""}
+              onChange={(e) => setSelectedSubjectId(parseInt(e.target.value, 10) || null)}
+            >
+              <option value="">選択してください</option>
+              {subjects.map((s) => (
+                <option key={s.subject_id} value={s.subject_id}>
+                  {s.subject_name}
+                </option>
+              ))}
+            </select>
+          </div>
           <div>
             <label className="text-sm mr-2">クラス:</label>
             <select
@@ -348,14 +412,14 @@ function SettingPageContent() {
               ))}
             </select>
           </div>
-
-          <button
-            className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-            onClick={handleRegister}
-          >
-            登録完了
-          </button>
         </div>
+
+        <button
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+          onClick={handleRegister}
+        >
+          登録完了
+        </button>
       </div>
 
       <div className="overflow-x-auto">
