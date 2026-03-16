@@ -6,32 +6,30 @@ import { apiBaseUrl } from '@/lib/apiConfig'
 /**
  * 演習問題登録 - テーマ詳細ページ（8スロット固定版）
  *
- * 8問分のスロットを常に表示し、画像アップロード・正解選択をローカルstateで管理。
- * 「確定/更新」ボタンを押した時のみDBとBlobを更新する。
- * 未保存変更がある場合、戻るボタンやブラウザ閉じ時に警告を出す。
+ * - 常に8スロットを表示
+ * - 画像+正解がある = 登録済み、ない = 未登録
+ * - 「確定/更新」で8問すべてを一括送信（DBを全上書き）
+ * - is_registered フラグは使わない。DBにレコードがあるか否かで判定。
  */
 
 const TOTAL_SLOTS = 8
 const optionLabels = ["①", "②", "③", "④"]
 
+/** 1スロット分のローカル状態 */
 type QuestionSlot = {
+    /** DB上のID（事前作成済みなら値あり、未作成ならnull） */
     lesson_question_id: number | null
-    is_registered: boolean
-    question_image_url: string | null
-    correctness_number: number | null
-    // ローカル編集用
-    localImageFile: File | null
+    /** ローカルで選択/表示中の画像プレビュー（data: URL or blob URL） */
     localImagePreview: string | null
+    /** ローカルで選択した画像ファイル（新規アップロード分） */
+    localImageFile: File | null
+    /** 正解番号（0-3、未設定ならnull） */
     localCorrectnessNumber: number | null
-    // 変更追跡
-    isChanged: boolean
-    // 削除フラグ（登録済みを未登録にする）
-    isMarkedForDeletion: boolean
 }
 
+/** APIから取得する1問分のデータ */
 type QuestionFromAPI = {
     lesson_question_id: number
-    is_registered: boolean
     question_image_url: string | null
     correctness_number: number | null
     lesson_question_label: string | null
@@ -54,14 +52,9 @@ type UnitItemFromContent = {
 function createEmptySlot(): QuestionSlot {
     return {
         lesson_question_id: null,
-        is_registered: false,
-        question_image_url: null,
-        correctness_number: null,
-        localImageFile: null,
         localImagePreview: null,
+        localImageFile: null,
         localCorrectnessNumber: null,
-        isChanged: false,
-        isMarkedForDeletion: false,
     }
 }
 
@@ -83,13 +76,26 @@ export default function ExerciseThemeDetailPage() {
     const [error, setError] = useState("")
     const [submitting, setSubmitting] = useState(false)
 
-    // 未保存変更の追跡
-    const isDirty = slots.some(s => s.isChanged || s.isMarkedForDeletion)
+    // 初期ロード時のスナップショット（isDirty判定用）
+    const [initialSnapshot, setInitialSnapshot] = useState("")
 
     // ファイルinput用のref配列
     const fileInputRefs = useRef<(HTMLInputElement | null)[]>(
         Array.from({ length: TOTAL_SLOTS }, () => null)
     )
+
+    // 未保存変更の判定
+    // スロットの「意味のある状態」をシリアライズして初期値と比較
+    function serializeSlots(s: QuestionSlot[]): string {
+        return JSON.stringify(s.map(slot => ({
+            hasImage: slot.localImagePreview != null,
+            correctness: slot.localCorrectnessNumber,
+            // 新しい画像ファイルがあれば変更とみなす
+            hasNewFile: slot.localImageFile != null,
+        })))
+    }
+
+    const isDirty = initialSnapshot !== "" && serializeSlots(slots) !== initialSnapshot
 
     // ============================================================
     // ブラウザ閉じ/リロード時の警告
@@ -113,12 +119,9 @@ export default function ExerciseThemeDetailPage() {
         setLoading(true)
         setError("")
         try {
-            // テーマ情報を取得（コンテンツAPIから逆引き）
-            // TODO: material_idを動的にする（科目対応後）
+            // テーマ情報を取得
             const contentRes = await fetch(`${apiBaseUrl}/content/by_id/1`, {
-                method: "GET",
-                mode: "cors",
-                redirect: "follow",
+                method: "GET", mode: "cors", redirect: "follow",
             })
             if (contentRes.ok) {
                 const contentData: UnitItemFromContent[] = await contentRes.json()
@@ -137,7 +140,6 @@ export default function ExerciseThemeDetailPage() {
             }
 
             // 8問分のデータを取得
-            // バックエンドAPI完成前は questions/count から取得してフォールバック
             let questionsFromApi: QuestionFromAPI[] = []
 
             try {
@@ -158,12 +160,11 @@ export default function ExerciseThemeDetailPage() {
                     )
                     if (countRes.ok) {
                         const countData = await countRes.json()
-                        questionsFromApi = countData.question_ids.map((qid: number, idx: number) => ({
+                        questionsFromApi = countData.question_ids.map((qid: number) => ({
                             lesson_question_id: qid,
-                            is_registered: true,
                             question_image_url: null,
                             correctness_number: null,
-                            lesson_question_label: `問題${idx + 1}`,
+                            lesson_question_label: null,
                         }))
                     }
                 } catch (e) {
@@ -175,21 +176,19 @@ export default function ExerciseThemeDetailPage() {
             const newSlots: QuestionSlot[] = Array.from({ length: TOTAL_SLOTS }, (_, idx) => {
                 const apiData = questionsFromApi[idx]
                 if (apiData) {
+                    // DBにレコードがあり、画像URLもある = 登録済み
+                    const hasData = apiData.question_image_url != null
                     return {
                         lesson_question_id: apiData.lesson_question_id,
-                        is_registered: apiData.is_registered,
-                        question_image_url: apiData.question_image_url,
-                        correctness_number: apiData.correctness_number,
+                        localImagePreview: hasData ? apiData.question_image_url : null,
                         localImageFile: null,
-                        localImagePreview: apiData.question_image_url,
-                        localCorrectnessNumber: apiData.correctness_number,
-                        isChanged: false,
-                        isMarkedForDeletion: false,
+                        localCorrectnessNumber: hasData ? apiData.correctness_number : null,
                     }
                 }
                 return createEmptySlot()
             })
             setSlots(newSlots)
+            setInitialSnapshot(serializeSlots(newSlots))
         } catch (err) {
             console.error(err)
             setError(err instanceof Error ? err.message : String(err))
@@ -216,8 +215,6 @@ export default function ExerciseThemeDetailPage() {
                     ...next[slotIndex],
                     localImageFile: file,
                     localImagePreview: reader.result as string,
-                    isChanged: true,
-                    isMarkedForDeletion: false,
                 }
                 return next
             })
@@ -228,18 +225,14 @@ export default function ExerciseThemeDetailPage() {
     function handleRemoveImage(slotIndex: number) {
         setSlots(prev => {
             const next = [...prev]
-            const slot = next[slotIndex]
             next[slotIndex] = {
-                ...slot,
+                ...next[slotIndex],
                 localImageFile: null,
                 localImagePreview: null,
                 localCorrectnessNumber: null,
-                isChanged: slot.is_registered, // 既に登録済みなら変更扱い
-                isMarkedForDeletion: slot.is_registered,
             }
             return next
         })
-        // ファイルinputもリセット
         const input = fileInputRefs.current[slotIndex]
         if (input) input.value = ""
     }
@@ -250,26 +243,23 @@ export default function ExerciseThemeDetailPage() {
             next[slotIndex] = {
                 ...next[slotIndex],
                 localCorrectnessNumber: value,
-                isChanged: true,
             }
             return next
         })
     }
 
     // ============================================================
-    // 確定/更新
+    // 確定/更新（8問すべてを一括送信・DB全上書き）
     // ============================================================
     async function handleSubmit() {
         if (!apiBaseUrl || !themeId) return
 
-        // バリデーション: 画像あるなら正解も必要
+        // バリデーション: 画像があるなら正解も必須
         for (let i = 0; i < TOTAL_SLOTS; i++) {
             const slot = slots[i]
-            if (slot.isChanged && !slot.isMarkedForDeletion) {
-                if (slot.localImagePreview && slot.localCorrectnessNumber === null) {
-                    alert(`問題${i + 1}: 画像が設定されていますが、正解が選択されていません。`)
-                    return
-                }
+            if (slot.localImagePreview && slot.localCorrectnessNumber === null) {
+                alert(`問題${i + 1}: 画像が設定されていますが、正解が選択されていません。`)
+                return
             }
         }
 
@@ -277,50 +267,49 @@ export default function ExerciseThemeDetailPage() {
         setError("")
 
         try {
-            const changedSlots = slots
-                .map((slot, idx) => ({ slot, idx }))
-                .filter(({ slot }) => slot.isChanged || slot.isMarkedForDeletion)
+            // FormDataに8問分のデータを詰める
+            const formData = new FormData()
 
-            // 変更された問題を並列で送信
-            const promises = changedSlots.map(async ({ slot, idx }) => {
-                if (!slot.lesson_question_id) {
-                    console.warn(`問題${idx + 1}: IDがないため更新スキップ`)
-                    return
-                }
+            for (let i = 0; i < TOTAL_SLOTS; i++) {
+                const slot = slots[i]
+                const prefix = `slot_${i}`
 
-                const formData = new FormData()
-
-                if (slot.isMarkedForDeletion) {
-                    // 削除（is_registered=false にする）
-                    formData.append("is_registered", "false")
-                    formData.append("correctness_number", "")
-                } else {
-                    // 登録/更新
-                    formData.append("is_registered", "true")
-                    formData.append("correctness_number", String(slot.localCorrectnessNumber ?? 0))
-                    formData.append("lesson_question_label", `問題${idx + 1}`)
+                if (slot.localImagePreview) {
+                    // この問題は「登録あり」
+                    formData.append(`${prefix}_status`, "active")
+                    formData.append(`${prefix}_correctness_number`, String(slot.localCorrectnessNumber ?? 0))
+                    formData.append(`${prefix}_label`, `問題${i + 1}`)
+                    if (slot.lesson_question_id) {
+                        formData.append(`${prefix}_question_id`, String(slot.lesson_question_id))
+                    }
+                    // 新しい画像ファイルがある場合のみ送信
                     if (slot.localImageFile) {
-                        formData.append("file", slot.localImageFile)
+                        formData.append(`${prefix}_file`, slot.localImageFile)
+                    }
+                } else {
+                    // この問題は「登録なし」→ DBレコードがあれば削除
+                    formData.append(`${prefix}_status`, "empty")
+                    if (slot.lesson_question_id) {
+                        formData.append(`${prefix}_question_id`, String(slot.lesson_question_id))
                     }
                 }
+            }
 
-                const res = await fetch(
-                    `${apiBaseUrl}/api/exercise_questions/${slot.lesson_question_id}`,
-                    {
-                        method: "PUT",
-                        mode: "cors",
-                        redirect: "follow",
-                        body: formData,
-                    }
-                )
-
-                if (!res.ok) {
-                    const msg = await res.text()
-                    throw new Error(`問題${idx + 1}の更新に失敗: ${res.status}, ${msg}`)
+            const res = await fetch(
+                `${apiBaseUrl}/api/exercise_questions/bulk/${themeId}`,
+                {
+                    method: "PUT",
+                    mode: "cors",
+                    redirect: "follow",
+                    body: formData,
                 }
-            })
+            )
 
-            await Promise.all(promises)
+            if (!res.ok) {
+                const msg = await res.text()
+                throw new Error(`更新失敗: ${res.status}, ${msg}`)
+            }
+
             alert("更新が完了しました")
 
             // 再取得してstateをリセット
@@ -345,12 +334,9 @@ export default function ExerciseThemeDetailPage() {
     }
 
     // ============================================================
-    // カウント
+    // カウント（画像がある = 登録済み）
     // ============================================================
-    const registeredCount = slots.filter(s =>
-        (s.is_registered && !s.isMarkedForDeletion) ||
-        (!s.is_registered && s.localImagePreview && s.isChanged)
-    ).length
+    const registeredCount = slots.filter(s => s.localImagePreview != null).length
 
     // ============================================================
     // JSX
@@ -425,8 +411,8 @@ export default function ExerciseThemeDetailPage() {
 
                     {/* 未保存変更の通知 */}
                     {isDirty && (
-                        <div className="bg-yellow-50 border border-yellow-300 rounded p-3 mb-4 text-sm text-yellow-800 flex items-center justify-between">
-                            <span>⚠ 未保存の変更があります。「確定/更新」ボタンを押して保存してください。</span>
+                        <div className="bg-yellow-50 border border-yellow-300 rounded p-3 mb-4 text-sm text-yellow-800">
+                            ⚠ 未保存の変更があります。「確定/更新」ボタンを押して保存してください。
                         </div>
                     )}
 
@@ -434,22 +420,18 @@ export default function ExerciseThemeDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 mb-6">
                         {slots.map((slot, idx) => {
                             const hasImage = slot.localImagePreview != null
-                            const isRegistered = slot.is_registered && !slot.isMarkedForDeletion
-                            const isNewRegistration = !slot.is_registered && hasImage && slot.isChanged
-                            const showAsRegistered = isRegistered || isNewRegistration
-
                             return (
                                 <div
                                     key={idx}
-                                    className={`bg-white border rounded-lg overflow-hidden transition-shadow ${slot.isChanged || slot.isMarkedForDeletion
-                                            ? "border-yellow-400 shadow-md"
-                                            : "border-gray-200 hover:shadow-md"
+                                    className={`bg-white border rounded-lg overflow-hidden transition-shadow ${hasImage
+                                            ? "border-gray-200 hover:shadow-md"
+                                            : "border-gray-200"
                                         }`}
                                 >
                                     {/* カードヘッダー */}
                                     <div className="p-3 border-b border-gray-100 flex items-center justify-between">
                                         <span className="font-bold text-md">問題{idx + 1}</span>
-                                        {showAsRegistered ? (
+                                        {hasImage ? (
                                             <span className="bg-green-100 text-green-700 px-2 py-0.5 rounded text-xs font-semibold">
                                                 登録済み
                                             </span>
@@ -501,7 +483,7 @@ export default function ExerciseThemeDetailPage() {
                                             onChange={(e) => handleImageUpload(idx, e)}
                                         />
 
-                                        {/* 正解選択 */}
+                                        {/* 正解選択（画像があるときのみ） */}
                                         {hasImage && (
                                             <div className="mt-2">
                                                 <p className="text-xs text-gray-500 mb-1">正解:</p>
