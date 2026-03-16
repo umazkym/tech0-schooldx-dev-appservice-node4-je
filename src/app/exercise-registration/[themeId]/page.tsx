@@ -254,13 +254,22 @@ export default function ExerciseThemeDetailPage() {
     async function handleSubmit() {
         if (!apiBaseUrl || !themeId) return
 
-        // バリデーション: 画像があるなら正解も必須
+        // バリデーション: 画像があるなら正解も必須、かつ最低1問は登録が必要
+        let hasActiveSlot = false
         for (let i = 0; i < TOTAL_SLOTS; i++) {
             const slot = slots[i]
-            if (slot.localImagePreview && slot.localCorrectnessNumber === null) {
-                alert(`問題${i + 1}: 画像が設定されていますが、正解が選択されていません。`)
-                return
+            if (slot.localImagePreview) {
+                hasActiveSlot = true
+                if (slot.localCorrectnessNumber === null) {
+                    alert(`問題${i + 1}: 画像が設定されていますが、正解が選択されていません。`)
+                    return
+                }
             }
+        }
+
+        if (!hasActiveSlot) {
+            alert("最低1問は画像を登録してください。")
+            return
         }
 
         setSubmitting(true)
