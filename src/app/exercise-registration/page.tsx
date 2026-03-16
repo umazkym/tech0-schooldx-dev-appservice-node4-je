@@ -53,6 +53,7 @@ type MaterialData = {
     material_id: number
     material_name: string
     subject_id?: number
+    lesson_name_id?: number // DBのスキーマに合わせる
 }
 
 export default function ExerciseRegistrationPage() {
@@ -108,9 +109,9 @@ export default function ExerciseRegistrationPage() {
     useEffect(() => {
         if (selectedSubjectId != null) {
             const filtered = allMaterials.filter(
-                (m) => m.subject_id === selectedSubjectId
+                (m) => m.subject_id === selectedSubjectId || m.lesson_name_id === selectedSubjectId
             )
-            // subject_idがまだ教科書データに無い場合は全件表示（互換性）
+            // 該当する教科書データが無い場合は全件表示（互換性担保）
             const result = filtered.length > 0 ? filtered : allMaterials
             setMaterials(result)
             // 最初の教科書を自動選択

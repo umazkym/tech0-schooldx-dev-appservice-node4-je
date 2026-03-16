@@ -140,9 +140,10 @@ function SettingPageContent() {
   useEffect(() => {
     if (selectedSubjectId != null) {
       const filtered = allMaterials.filter(
-        (m: Material & { subject_id?: number }) => m.subject_id === selectedSubjectId
+        (m: Material & { subject_id?: number; lesson_name_id?: number }) => 
+          m.subject_id === selectedSubjectId || m.lesson_name_id === selectedSubjectId
       );
-      // subject_idがまだ教科書データに無い場合は全件表示（互換性）
+      // subject_idがまだ教科書データに無い場合は全件表示（互換性担保）
       setMaterials(filtered.length > 0 ? filtered : allMaterials);
     } else {
       setMaterials(allMaterials);
