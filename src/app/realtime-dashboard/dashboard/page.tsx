@@ -15,6 +15,7 @@ import { apiBaseUrl } from '@/lib/apiConfig';
 interface AnswerDataWithDetails {
   student_id: number;
   lesson_id: number;
+  lesson_theme_id: number | null; // ★追加: テーマIDでフィルタリングに使用
   answer_correctness: number | null;
   answer_status: number | null; // 0:未回答, 1:解答中, 2:解答済
   answer_start_unix: number | null;
@@ -127,16 +128,19 @@ function DashboardPageContent() {
         const d = (await res.json()) as LessonInformation;
         setLessonInfo(d);
 
-        // ★追加: lesson_question_statusから演習状態を復元
-        // 選択中のテーマまたは最初のテーマのステータスを確認
-        const currentTheme = d.lesson_theme?.[0];
+        // ★修正: selectedContentに対応するテーマ、なければ最初のテーマを使用
+        const currentThemeId = selectedContent?.lesson_theme_id;
+        const currentTheme = currentThemeId
+          ? d.lesson_theme?.find(t => t.lesson_theme_id === currentThemeId) ?? d.lesson_theme?.[0]
+          : d.lesson_theme?.[0];
+
         if (currentTheme?.lesson_question_status === 2) {
           // ACTIVE状態なら演習アクティブ（ポーリング開始）
           console.log('演習がACTIVE状態のため、ポーリングを開始します');
           setIsExerciseActive(true);
         }
 
-        // ★追加: テーマの問題数を取得
+        // ★修正: 選択中テーマの問題数を取得
         if (currentTheme?.lesson_theme_id) {
           try {
             const qRes = await fetch(
@@ -148,7 +152,7 @@ function DashboardPageContent() {
                 question_count: number;
                 question_ids: number[];
               };
-              console.log(`問題数取得: ${qData.question_count}問`, qData.question_ids);
+              console.log(`問題数取得 (theme=${currentTheme.lesson_theme_id}): ${qData.question_count}問`, qData.question_ids);
 
               // totalQuestionsを設定
               setTotalQuestions(qData.question_count);
@@ -171,7 +175,7 @@ function DashboardPageContent() {
       }
     })();
 
-  }, [lessonId]);
+  }, [lessonId, selectedContent]);
 
   // 修正2: 生徒データを保持する State と、動的マップ用の State/Ref を定義
   const [students, setStudents] = useState<Student[]>([]);
@@ -201,6 +205,59 @@ function DashboardPageContent() {
   useEffect(() => {
     timeOffsetRef.current = timeOffset;
   }, [timeOffset]);
+
+  // ★追加: テーマ切り替え時に回答データ・問題マッピングをリセットし、新テーマの問題数を再取得
+  useEffect(() => {
+    if (!selectedContent?.lesson_theme_id || !apiBaseUrl) return;
+
+    console.log(`🔄 テーマ切替検知: theme_id=${selectedContent.lesson_theme_id}`);
+
+    // stateリセット: 前のテーマのデータを消去
+    setQuestionIndexMap(null);
+    setTotalQuestions(0);
+    setStudents(prev => prev.map(s => ({ ...s, questions: [] })));
+    setIsExerciseActive(false);
+
+    // 新テーマの問題数を取得
+    (async () => {
+      try {
+        const qRes = await fetch(
+          `${apiBaseUrl}/api/lesson_themes/${selectedContent.lesson_theme_id}/questions/count`
+        );
+        if (qRes.ok) {
+          const qData = await qRes.json() as {
+            lesson_theme_id: number;
+            question_count: number;
+            question_ids: number[];
+          };
+          console.log(`テーマ切替: 問題数取得 (theme=${selectedContent.lesson_theme_id}): ${qData.question_count}問`, qData.question_ids);
+
+          setTotalQuestions(qData.question_count);
+
+          const newMap: QuestionIndexMap = {};
+          qData.question_ids.forEach((qId, index) => {
+            newMap[qId] = index;
+          });
+          setQuestionIndexMap(newMap);
+        } else {
+          console.error(`テーマ切替: 問題数取得APIエラー: ${qRes.status}`);
+        }
+
+        // 演習ステータスも確認
+        if (lessonInfo) {
+          const matchedTheme = lessonInfo.lesson_theme?.find(
+            t => t.lesson_theme_id === selectedContent.lesson_theme_id
+          );
+          if (matchedTheme?.lesson_question_status === 2) {
+            console.log('テーマ切替: 演習がACTIVE状態のため、ポーリングを開始します');
+            setIsExerciseActive(true);
+          }
+        }
+      } catch (err) {
+        console.error('テーマ切替: 問題数取得エラー:', err);
+      }
+    })();
+  }, [selectedContent?.lesson_theme_id, apiBaseUrl, lessonInfo]);
 
   // ▼▼▼▼▼ 【修正】 生徒リストの初期化処理 (lessonInfo取得後に実行) ▼▼▼▼▼
   useEffect(() => {
@@ -507,13 +564,21 @@ function DashboardPageContent() {
     return 0;
   }, [defaultMinutes, getStartUnix, getServerUnixTime]);
 
-  // ▼▼▼▼▼ 【修正】 fetchAllStudentsData を修正 (最大16問の動的配列対応) ▼▼▼▼▼
+  // ★修正: 現在選択中のテーマIDを取得するヘルパー
+  const getCurrentThemeId = useCallback(() => {
+    return selectedContent?.lesson_theme_id ?? firstTheme?.lesson_theme_id ?? null;
+  }, [selectedContent, firstTheme]);
+
+  // ▼▼▼▼▼ 【修正】 fetchAllStudentsData を修正 (テーマIDフィルタリング対応) ▼▼▼▼▼
   const fetchAllStudentsData = useCallback(async () => {
     if (!lessonId || !apiBaseUrl) return;
     const currentStudents = studentsRef.current;
     if (currentStudents.length === 0) {
       return; // 生徒データがまだない場合は何もしない
     }
+
+    // ★修正: 現在選択中のテーマIDを取得
+    const currentThemeId = getCurrentThemeId();
 
     // (A) 全生徒の回答データを1回のAPI呼び出しで取得
     let allAnswersData: AnswerDataWithDetails[] = [];
@@ -532,8 +597,15 @@ function DashboardPageContent() {
         allAnswersData = await res.json();
       }
 
+      // ★追加: テーマIDでフィルタリング
+      if (currentThemeId != null) {
+        const beforeCount = allAnswersData.length;
+        allAnswersData = allAnswersData.filter(a => a.lesson_theme_id === currentThemeId);
+        console.log(`🔍 テーマフィルタ (theme=${currentThemeId}): ${beforeCount} -> ${allAnswersData.length} records`);
+      }
+
       if (allAnswersData.length > 0) {
-        console.log('🔍 Raw API response (ALL STUDENTS):', allAnswersData.length, 'records');
+        console.log('🔍 Filtered API response (ALL STUDENTS):', allAnswersData.length, 'records');
       }
 
     } catch (error) {
@@ -621,16 +693,19 @@ function DashboardPageContent() {
         return { ...student, questions: newQuestions };
       });
     });
-  }, [lessonId, calcIcon, calcProgress, getStartUnix, apiBaseUrl]);
+  }, [lessonId, calcIcon, calcProgress, getStartUnix, apiBaseUrl, getCurrentThemeId]);
   // ▲▲▲▲▲ 【修正】 ここまで ▲▲▲▲▲
 
-  // ▼▼▼▼▼ 【新規】 60秒ポーリング用: DBの値で全問題を強制上書き ▼▼▼▼▼
+  // ▼▼▼▼▼ 【修正】 60秒ポーリング用: DBの値で全問題を強制上書き (テーマフィルタ対応) ▼▼▼▼▼
   const fetchAndOverwriteAllData = useCallback(async () => {
     if (!lessonId || !apiBaseUrl) return;
     const currentStudents = studentsRef.current;
     if (currentStudents.length === 0) return;
 
-    console.log('🔄 60秒ポーリング: 全問題をDBの値で強制上書き開始');
+    // ★追加: 現在選択中のテーマIDを取得
+    const currentThemeId = getCurrentThemeId();
+
+    console.log(`🔄 60秒ポーリング: 全問題をDBの値で強制上書き開始 (theme=${currentThemeId})`);
 
     let allAnswersData: AnswerDataWithDetails[] = [];
     try {
@@ -649,6 +724,11 @@ function DashboardPageContent() {
     } catch (error) {
       console.error(`Error fetching all answers data:`, error);
       return;
+    }
+
+    // ★追加: テーマIDでフィルタリング
+    if (currentThemeId != null) {
+      allAnswersData = allAnswersData.filter(a => a.lesson_theme_id === currentThemeId);
     }
 
     const currentMap = questionIndexMapRef.current;
@@ -701,8 +781,8 @@ function DashboardPageContent() {
     });
 
     console.log('🔄 60秒ポーリング: 強制上書き完了');
-  }, [lessonId, calcIcon, calcProgress, getStartUnix, apiBaseUrl]);
-  // ▲▲▲▲▲ 【新規】 ここまで ▲▲▲▲▲
+  }, [lessonId, calcIcon, calcProgress, getStartUnix, apiBaseUrl, getCurrentThemeId]);
+  // ▲▲▲▲▲ 【修正】 ここまで ▲▲▲▲▲
 
   // Socket.IOイベントの購読ロジック
   useEffect(() => {
